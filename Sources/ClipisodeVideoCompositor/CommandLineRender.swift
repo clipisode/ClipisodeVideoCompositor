@@ -5,9 +5,9 @@ public struct CommandLineRender {
   public init() { }
 
   public static func isCommandLineRun() -> Bool {
-    let argv = ProcessInfo.processInfo.arguments
-
-    return argv.count == 3 && argv[1] == "--background"
+    return CommandLine.arguments.contains { argument in
+      argument == "--background"
+    }
   }
   
   public static func dataDir() -> URL? {
