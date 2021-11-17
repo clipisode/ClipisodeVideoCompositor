@@ -379,17 +379,17 @@ public class ElementPainter {
     })
 
     var attributes: [NSAttributedString.Key : Any] = [
-      NSAttributedString.Key.font: font,
-      NSAttributedString.Key.foregroundColor: foregroundColor,
+      NSAttributedString.Key("font"): font,
+      NSAttributedString.Key("foregroundColor"): foregroundColor,
     ]
 
     if let _paragraphStyle = paragraphStyle {
-      attributes[NSAttributedString.Key.paragraphStyle] = _paragraphStyle
+      attributes[NSAttributedString.Key("paragraphStyle")] = _paragraphStyle
     }
     
     let attrString = NSAttributedString(string: value, attributes: attributes)
     let frameSetter = CTFramesetterCreateWithAttributedString(attrString);
-    
+
     let currentRange = CFRangeMake(0, 0)
     
     // vertical align center or bottom?

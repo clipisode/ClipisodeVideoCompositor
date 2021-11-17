@@ -1,7 +1,7 @@
 import Foundation
 import AVFoundation
 
-class AssetLoader : NSObject {
+public class AssetLoader : NSObject {
   var assets: Dictionary<String, AVAsset> = [:];
   
   func load(key: String, filePath: String) -> AVAsset {

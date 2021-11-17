@@ -1,7 +1,7 @@
 import Foundation
 import CoreGraphics
 
-class ColorHelper {
+public class ColorHelper {
   static func getColorObjectFromHexString(color: String, alpha: Double) -> CGColor {
     // Convert hex string to an integer
     let rgbValue = intFromHexString(hexStr: color)

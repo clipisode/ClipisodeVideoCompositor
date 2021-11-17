@@ -1,7 +1,7 @@
 import Foundation
 import AVFoundation
 
-struct CommandLineRender {
+public struct CommandLineRender {
   static func isCommandLineRun() -> Bool {
     let argv = ProcessInfo.processInfo.arguments
 

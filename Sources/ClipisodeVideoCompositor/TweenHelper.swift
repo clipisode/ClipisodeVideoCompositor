@@ -1,7 +1,7 @@
 import Foundation
 import CoreMedia
 
-class TweenHelper {
+public class TweenHelper {
   static func tween(time: CMTime, fromValue: Double, toValue: Double, startTime: CMTime, endTime: CMTime) -> Double {
     let animationDuration = CMTimeSubtract(endTime, startTime)
     let animationProgress = CMTimeSubtract(time, startTime)
