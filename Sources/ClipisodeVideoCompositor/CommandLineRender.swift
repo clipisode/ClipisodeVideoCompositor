@@ -2,13 +2,13 @@ import Foundation
 import AVFoundation
 
 public struct CommandLineRender {
-  static func isCommandLineRun() -> Bool {
+  public static func isCommandLineRun() -> Bool {
     let argv = ProcessInfo.processInfo.arguments
 
     return argv.count == 3 && argv[1] == "--background"
   }
   
-  static func dataDir() -> URL? {
+  public static func dataDir() -> URL? {
     let argv = ProcessInfo.processInfo.arguments
     
     if (argv.count == 3) {
@@ -25,7 +25,7 @@ public struct CommandLineRender {
     return nil
   }
   
-  static func loadCompositionManager(_ url: URL) -> CompositionManager? {
+  public static func loadCompositionManager(_ url: URL) -> CompositionManager? {
     do {
       let data = try Data(contentsOf: URL(fileURLWithPath: "\(url.absoluteString)/composition.json"))
       let jsonResult = try JSONSerialization.jsonObject(with: data, options: .mutableLeaves)
@@ -40,7 +40,7 @@ public struct CommandLineRender {
     return nil
   }
   
-  func run(url: URL) async {
+  public func run(url: URL) async {
     if let compositionManager = CommandLineRender.loadCompositionManager(url) {
       if let composition = compositionManager.composition, let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPreset1280x720) {
         exportSession.outputURL = url.appendingPathComponent("out.mp4")
