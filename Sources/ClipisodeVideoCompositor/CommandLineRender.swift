@@ -11,9 +11,7 @@ public struct CommandLineRender {
   }
   
   public static func dataDir() -> URL? {
-    let argv = ProcessInfo.processInfo.arguments
-    
-    if (argv.count == 3) {
+    if isCommandLineRun() {
       let directoryPath = "/var/folders/g3/f07kz8_56sq56rhh08l13_h00000gn/T/tmp-64812yhxObLOnwf3/" //argv[2];
       var isDir: ObjCBool = false
         
