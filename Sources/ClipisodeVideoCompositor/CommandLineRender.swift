@@ -17,7 +17,7 @@ public struct CommandLineRender {
         
       if (FileManager.default.fileExists(atPath: directoryPath, isDirectory: &isDir)) {
         if (isDir.boolValue) {
-          return URL(string: directoryPath)
+          return URL(fileURLWithPath: directoryPath, isDirectory: true)
         }
       }
     }
@@ -27,10 +27,10 @@ public struct CommandLineRender {
   
   public static func loadCompositionManager(_ url: URL) -> CompositionManager? {
     do {
-      let data = try Data(contentsOf: URL(fileURLWithPath: "\(url.absoluteString)/composition.json"))
+      let data = try Data(contentsOf: url.appendingPathComponent("composition.json"))
       let jsonResult = try JSONSerialization.jsonObject(with: data, options: .mutableLeaves)
       
-      if let jsonResult = jsonResult as? Dictionary<String, AnyObject> {
+      if let jsonResult = jsonResult as? [String:AnyObject] {
         return CompositionManager(manifest: jsonResult)
       }
     } catch {
@@ -41,6 +41,8 @@ public struct CommandLineRender {
   }
   
   public func run(url: URL) async {
+    var start = Date()
+    
     if let compositionManager = CommandLineRender.loadCompositionManager(url) {
       if let composition = compositionManager.composition, let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPreset1280x720) {
         exportSession.outputURL = url.appendingPathComponent("out.mp4")
@@ -54,20 +56,24 @@ public struct CommandLineRender {
           }
         }
 
-        let progressCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _timer in
-          print("Progress: \(exportSession.progress)")
+//        let progressCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _timer in
+//          print("Progress: \(exportSession.progress)")
+//
+//          if exportSession.progress == 1.0 {
+//            _timer.invalidate()
+//          }
+//        }
 
-          if exportSession.progress == 1.0 {
-            _timer.invalidate()
-          }
-        }
-
+        start = Date()
         await exportSession.export()
+        let end = Date()
+        print("Elapsed: \(end.timeIntervalSince(start))")
+        
 
         // The timer may have been invalidated by its own progress check
-        if progressCheckTimer.isValid {
-          progressCheckTimer.invalidate()
-        }
+//        if progressCheckTimer.isValid {
+//          progressCheckTimer.invalidate()
+//        }
 
         if exportSession.status == .failed {
           if let err = exportSession.error {

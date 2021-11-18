@@ -4,6 +4,9 @@ import CoreText
 import CoreMedia
 import AVFoundation
 import CoreImage
+import CoreFoundation
+import AppKit
+
 
 public typealias Element = Dictionary<String, Any>
 public typealias Props = Dictionary<String, Any>
@@ -146,8 +149,6 @@ public class ElementPainter {
   }
   
   private func drawFrame(elementName: String, props: Props) {
-//    let startDF = DispatchTime.now()
-    
     let resizeMode = props["resizeMode"] as? String ?? "cover"
     let x = props["x"] as? Double ?? 0
     let y = props["y"] as? Double ?? 0
@@ -181,11 +182,11 @@ public class ElementPainter {
   
   // https://stackoverflow.com/a/45815004
   private func convertCIImageToCGImage(inputImage: CIImage) -> CGImage? {
-      let context = CIContext(options: nil)
-      if let cgImage = context.createCGImage(inputImage, from: inputImage.extent) {
-          return cgImage
-      }
-      return nil
+    let context = CIContext(options: nil)
+    if let cgImage = context.createCGImage(inputImage, from: inputImage.extent) {
+      return cgImage
+    }
+    return nil
   }
   
   private func imageByKey(_ key: String) -> CGImage? {
@@ -342,6 +343,9 @@ public class ElementPainter {
     var y = props["y"] as? Double ?? 0.0
     let width = props["width"] as? Double ?? 0.0
     let height = props["height"] as? Double ?? 0.0
+    let shadowColor = props["shadowColor"] as? String
+    let shadowAlpha = props["shadowAlpha"] as? Double ?? 1.0
+    let shadowBlurRadius = props["shadowBlurRadius"] as? Double
     
     // TODO: Can we check the validity of fontName?
     
@@ -379,12 +383,21 @@ public class ElementPainter {
     })
 
     var attributes: [NSAttributedString.Key : Any] = [
-      NSAttributedString.Key("font"): font,
-      NSAttributedString.Key("foregroundColor"): foregroundColor,
+      .font: font,
+      .foregroundColor: foregroundColor,
     ]
+    
+    if let _shadowColor = shadowColor, let _shadowBlurRadius = shadowBlurRadius {
+      let shadowNSColor = NSColor(cgColor: ColorHelper.getColorObjectFromHexString(color: _shadowColor, alpha: shadowAlpha))
+      let shadow = NSShadow()
+      shadow.shadowColor = shadowNSColor
+      shadow.shadowBlurRadius = _shadowBlurRadius
+      
+      attributes[.shadow] = shadow
+    }
 
     if let _paragraphStyle = paragraphStyle {
-      attributes[NSAttributedString.Key("paragraphStyle")] = _paragraphStyle
+      attributes[.paragraphStyle] = _paragraphStyle
     }
     
     let attrString = NSAttributedString(string: value, attributes: attributes)
