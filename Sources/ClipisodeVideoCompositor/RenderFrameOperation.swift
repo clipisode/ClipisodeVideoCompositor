@@ -3,9 +3,9 @@ import AVFoundation
 
 class RenderFrameOperation {
   private let request: AVAsynchronousVideoCompositionRequest
-  private let compositionManager: CompositionManager?
+  private let compositionManager: CompositionManager
 
-  public init(_ request: AVAsynchronousVideoCompositionRequest, _ compositionManager: CompositionManager?) {
+  public init(_ request: AVAsynchronousVideoCompositionRequest, _ compositionManager: CompositionManager) {
     self.request = request
     self.compositionManager = compositionManager
   }
@@ -16,7 +16,7 @@ class RenderFrameOperation {
 //      return
 //    }
 //
-    if let manifest = self.compositionManager?.manifest, let destination = request.renderContext.newPixelBuffer() {
+    if let destination = request.renderContext.newPixelBuffer() {
       CVPixelBufferLockBaseAddress(destination, CVPixelBufferLockFlags(rawValue: 0))
     
       let destinationWidth: Int = CVPixelBufferGetWidth(destination)
@@ -37,8 +37,8 @@ class RenderFrameOperation {
         bitmapInfo: bitmapInfo.rawValue
       )
 
-      if let renderContext = context, let renderManager = self.compositionManager {
-        self.renderIntoContext(renderContext, manifest: manifest, manager: renderManager, request: request)
+      if let renderContext = context {
+        self.renderIntoContext(renderContext, manifest: self.compositionManager.manifest, manager: self.compositionManager, request: request)
       }
 
       CVPixelBufferUnlockBaseAddress(destination, CVPixelBufferLockFlags(rawValue: 0));
@@ -73,7 +73,6 @@ class RenderFrameOperation {
   func renderIntoContext(_ context: CGContext, manifest: Dictionary<String, Any>, manager: CompositionManager, request: AVAsynchronousVideoCompositionRequest) {
     context.setAllowsAntialiasing(true)
 
-    // TODO: This ElementPainter needs to accept the image cache as input so it isn't recreated every time
     let painter = ElementPainter(context: context, height: 1280, manager: manager, files: manifest["files"] as! Dictionary<String, String>)
 
     painter.drawBackground()

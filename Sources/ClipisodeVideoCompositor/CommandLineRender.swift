@@ -12,7 +12,7 @@ public struct CommandLineRender {
   
   public static func dataDir() -> URL? {
     if isCommandLineRun() {
-      let directoryPath = "/var/folders/g3/f07kz8_56sq56rhh08l13_h00000gn/T/tmp-64812yhxObLOnwf3/" //argv[2];
+      let directoryPath = "/Users/max/Desktop/RenderTestFiles/TC1/" //argv[2];
       var isDir: ObjCBool = false
         
       if (FileManager.default.fileExists(atPath: directoryPath, isDirectory: &isDir)) {
@@ -31,7 +31,7 @@ public struct CommandLineRender {
       let jsonResult = try JSONSerialization.jsonObject(with: data, options: .mutableLeaves)
       
       if let jsonResult = jsonResult as? [String:AnyObject] {
-        return CompositionManager(manifest: jsonResult)
+        return CompositionManager(manifest: jsonResult, baseUrl: url)
       }
     } catch {
       print("error: \(error)")
@@ -44,8 +44,25 @@ public struct CommandLineRender {
     var start = Date()
     
     if let compositionManager = CommandLineRender.loadCompositionManager(url) {
+      let outUrl = url.appendingPathComponent("out.mp4")
+      
+      if FileManager.default.fileExists(atPath: outUrl.path) {
+        do {
+          try FileManager.default.removeItem(at: outUrl)
+        } catch {
+          print("Error deleting out.mp4")
+        }
+      }
+      
       if let composition = compositionManager.composition, let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPreset1280x720) {
         exportSession.outputURL = url.appendingPathComponent("out.mp4")
+        
+        if FileManager.default.fileExists(atPath: outUrl.path) {
+          do {
+            try FileManager.default.removeItem(at: exportSession.outputURL!)
+          } catch { print("Failed to delete") }
+        }
+        
         exportSession.outputFileType = .mp4
         
         exportSession.videoComposition = compositionManager.videoComposition

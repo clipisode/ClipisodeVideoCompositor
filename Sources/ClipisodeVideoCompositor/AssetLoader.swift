@@ -2,7 +2,12 @@ import Foundation
 import AVFoundation
 
 public class AssetLoader : NSObject {
+  let baseUrl: URL
   var assets: Dictionary<String, AVAsset> = [:];
+  
+  init(_ baseUrl: URL) {
+    self.baseUrl = baseUrl
+  }
   
   func load(key: String, filePath: String) -> AVAsset {
     var asset: AVAsset? = assets[key];
@@ -11,8 +16,10 @@ public class AssetLoader : NSObject {
     
     if filePath.contains("://") {
       url = URL(string: filePath)
-    } else {
+    } else if filePath.starts(with: "/") {
       url = URL(fileURLWithPath: filePath)
+    } else {
+      url = URL(string: filePath, relativeTo: self.baseUrl)
     }
 
     if asset == nil, let u = url {
@@ -25,18 +32,22 @@ public class AssetLoader : NSObject {
 
     let composition = AVMutableComposition()
     let compositionVideoTrack = composition.addMutableTrack(withMediaType: .video, preferredTrackID: CMPersistentTrackID(kCMPersistentTrackID_Invalid))
-    let compositionAudioTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID:  CMPersistentTrackID(kCMPersistentTrackID_Invalid))
+    let compositionAudioTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: CMPersistentTrackID(kCMPersistentTrackID_Invalid))
 
-    if let a = asset {
-      let sourceVideoTrack = a.tracks(withMediaType: .video).first!
-      let sourceAudioTrack = a.tracks(withMediaType: .audio).first!
+    if let _asset = asset {
+      let sourceVideoTrack = _asset.tracks(withMediaType: .video).first
+      let sourceAudioTrack = _asset.tracks(withMediaType: .audio).first
     
-      compositionVideoTrack?.preferredTransform = sourceVideoTrack.preferredTransform
-
       do {
-        try compositionVideoTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: a.duration), of: sourceVideoTrack, at: .zero)
-        try compositionAudioTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: a.duration), of: sourceAudioTrack, at: .zero)
+        if let _sourceVideoTrack = sourceVideoTrack {
+          compositionVideoTrack?.preferredTransform = _sourceVideoTrack.preferredTransform
+          try compositionVideoTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: _asset.duration), of: _sourceVideoTrack, at: .zero)
+        }
+        if let _sourceAudioTrack = sourceAudioTrack {
+          try compositionAudioTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: _asset.duration), of: _sourceAudioTrack, at: .zero)
+        }
       } catch {
+        print("Error adding tracks")
       }
     }
 

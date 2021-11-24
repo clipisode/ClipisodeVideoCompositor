@@ -6,7 +6,7 @@ import AVFoundation
 import CoreImage
 import CoreFoundation
 import AppKit
-
+import Vision
 
 public typealias Element = Dictionary<String, Any>
 public typealias Props = Dictionary<String, Any>
@@ -18,10 +18,10 @@ public class ElementPainter {
   private let coordinateTransform: CGAffineTransform
 
   let context: CGContext
-  let manager: CompositionManager?
+  let manager: CompositionManager
   let files: Dictionary<String, String>
   
-  public init(context: CGContext, height: Int, manager: CompositionManager?, files: Dictionary<String, String>) {
+  public init(context: CGContext, height: Int, manager: CompositionManager, files: Dictionary<String, String>) {
     self.context = context
     self.manager = manager
     self.files = files
@@ -32,8 +32,16 @@ public class ElementPainter {
   }
   
   public func drawBackground() {
-    context.setFillColor(CGColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0))
-    context.fill(CGRect(x: 0, y:0, width: context.width, height: context.height))
+    context.setFillColor(.init(red: 88.0/255.0, green: 5.0/255.0, blue: 147.0/255.0, alpha: 1.0))
+
+    let bounds = CGRect(
+      x: 0,
+      y: 0,
+      width: context.width,
+      height: context.height
+    )
+
+    context.fill(bounds)
   }
   
   public func drawElement(type: String, element: Element, props: Props, at: CMTime, compositionRequest: AVAsynchronousVideoCompositionRequest? = nil) {
@@ -59,59 +67,22 @@ public class ElementPainter {
     }
   }
   
-  private func drawVideo(elementName: String, props: Props, at: CMTime, request: AVAsynchronousVideoCompositionRequest) {
-    let resizeMode = props["resizeMode"] as? String ?? "cover"
-    let x = props["x"] as? Double ?? 0
-    let y = props["y"] as? Double ?? 0
-    let width = props["width"] as? Double ?? 0
-    let height = props["height"] as? Double ?? 0
+  private func drawVideo(elementName: String, props: Props, at compositionTime: CMTime, request: AVAsynchronousVideoCompositionRequest) {
+    let alpha = props["alpha"] as? Double ?? 1.0
 
-    if let manager = self.manager, let trackId = manager.videoTrackId(elementName: elementName)  {
+    if let trackId = manager.videoTrackId(elementName: elementName)  {
       let requestedFrame = request.sourceFrame(byTrackID: trackId)
 
       if let sourceFrame = requestedFrame {
-        CVPixelBufferLockBaseAddress(sourceFrame, .readOnly)
-        var sourceFrameImage = CIImage(cvPixelBuffer: sourceFrame)
-        CVPixelBufferUnlockBaseAddress(sourceFrame, .readOnly)
-
-        // ------- preferred transform ----------
-        
-        if let mainInstruction = request.videoCompositionInstruction as? AVVideoCompositionInstruction {
-          if let li = mainInstruction.layerInstructions.first(where: { $0.trackID == trackId }) {
-            var startTransform: CGAffineTransform = .identity
-            
-            if li.getTransformRamp(for: at, start: &startTransform, end: nil, timeRange: nil) {
-              if !startTransform.isIdentity {
-                var rotatedTransform = startTransform
-
-                if rotatedTransform.tx == sourceFrameImage.extent.height, rotatedTransform.ty == 0 {
-                  rotatedTransform = rotatedTransform
-                    .rotated(by: -.pi)
-                    .translatedBy(x: -sourceFrameImage.extent.width, y: -sourceFrameImage.extent.height)
-                }
-                
-                sourceFrameImage = sourceFrameImage.transformed(by: rotatedTransform)
-              }
-            }
-          }
-        }
-
-        // --------------------------------------
-        
+        let sourceFrameImage = FrameHandler.prepare(sourceFrame, with: request.videoCompositionInstruction, on: trackId, at: compositionTime)
         let coreImageContext = CIContext(cgContext: context, options: nil)
         
-        if let sourceFrameCGImage = coreImageContext.createCGImage(sourceFrameImage, from: sourceFrameImage.extent) {
-          let finalRect = calculateRectForResizeMode(
-            sourceWidth: Double(sourceFrameCGImage.width),
-            sourceHeight: Double(sourceFrameCGImage.height),
-            resizeMode: resizeMode,
-            x: x, y: y, width: width, height: height
-          ).applying(coordinateTransform)
+        if let sourceFrame = coreImageContext.createCGImage(sourceFrameImage, from: sourceFrameImage.extent) {
+          let bounds = rectFromProps(props)
+
+          let props = DrawImageProps(resizeMode: .contain, bounds: bounds, alpha: alpha)
           
-          context.saveGState()
-          context.clip(to: rectFromProps(props))
-          context.draw(sourceFrameCGImage, in: finalRect)
-          context.restoreGState()
+          draw(sourceFrame, with: props)
         }
       }
     }
@@ -148,67 +119,74 @@ public class ElementPainter {
     return CGRect(x: finalX, y: finalY, width: finalWidth, height: finalHeight)
   }
   
-  private func drawFrame(elementName: String, props: Props) {
-    let resizeMode = props["resizeMode"] as? String ?? "cover"
-    let x = props["x"] as? Double ?? 0
-    let y = props["y"] as? Double ?? 0
-    let width = props["width"] as? Double ?? 0
-    let height = props["height"] as? Double ?? 0
+  
+  enum ImageResizeMode {
+    case cover
+    case contain
+    case fill
+  }
+
+  struct DrawImageProps {
+    var resizeMode: ImageResizeMode = .contain
+    var bounds: CGRect
+    var alpha: Double = 1.0
+  }
+  
+  private func draw(_ image: CGImage, with props: DrawImageProps) {
+    let finalRect = calculateRectForResizeMode(
+      sourceWidth: Double(image.width),
+      sourceHeight: Double(image.height),
+      resizeMode: "contain",
+      x: props.bounds.minX, y: props.bounds.minY, width: props.bounds.width, height: props.bounds.height
+    ).applying(coordinateTransform)
     
-    if let manager = self.manager, let frameImage = manager.frame(elementName: elementName) {
+    context.saveGState()
+
+    context.clip(to: props.bounds)
+    context.setAlpha(CGFloat(props.alpha))
+    context.draw(image, in: finalRect)
+
+    context.restoreGState()
+  }
+  
+  private func drawFrame(elementName: String, props: Props) {
+    if let frameImage = manager.frame(elementName: elementName) {
       let alpha = props["alpha"] as? Double ?? 1.0
       let rect = rectFromProps(props)
       
-      let finalRect = calculateRectForResizeMode(
-        sourceWidth: Double(frameImage.width),
-        sourceHeight: Double(frameImage.height),
-        resizeMode: resizeMode,
-        x: x, y: y, width: width, height: height
-      ).applying(coordinateTransform)
+      let props = DrawImageProps(resizeMode: .contain, bounds: rect, alpha: alpha)
       
-      context.saveGState()
-
-      context.clip(to: rect)
-      context.setAlpha(CGFloat(alpha))
-      context.draw(frameImage, in: finalRect)
-
-      context.restoreGState()
+      draw(frameImage, with: props)
     } else {
       print("No frame")
     }
   }
   
-  private var imageCache: Dictionary<String, CGImage> = [:];
-  
   // https://stackoverflow.com/a/45815004
-  private func convertCIImageToCGImage(inputImage: CIImage) -> CGImage? {
+  private func createCGImage(from: CIImage) -> CGImage? {
     let context = CIContext(options: nil)
-    if let cgImage = context.createCGImage(inputImage, from: inputImage.extent) {
-      return cgImage
-    }
-    return nil
+
+    return context.createCGImage(from, from: from.extent)
   }
   
   private func imageByKey(_ key: String) -> CGImage? {
-    if imageCache[key] != nil {
-      return imageCache[key]
-    }
-    
-    var image: CGImage? = nil
-    
-    if let filePath = self.files[key] {
-      if let coreImageImage = CIImage(contentsOf: URL(fileURLWithPath: filePath)) {
-        image = convertCIImageToCGImage(inputImage: coreImageImage)
+    return self.manager.image(key) {
+      var image: CGImage? = nil
+
+      if let filePath = self.files[key] {
+        let imageUrl = URL(fileURLWithPath: filePath, relativeTo: self.manager.baseUrl)
+        
+        if let ciImage = CIImage(contentsOf: imageUrl) {
+          image = createCGImage(from: ciImage)
+        } else {
+          print("CIImage not loaded")
+        }
       } else {
-        print("CIImage not loaded")
+        print("File path not found for image")
       }
-    } else {
-      print("File path not found for image")
+
+      return image
     }
-    
-    imageCache[key] = image
-    
-    return image
   }
   
   private func drawImage(props: Props) {

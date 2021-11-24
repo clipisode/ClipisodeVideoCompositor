@@ -13,8 +13,10 @@ public class ThemeCompositor: NSObject, AVVideoCompositing {
     if compositionManager?.manifest == nil {
       request.finish(with: AVError(.videoCompositorFailed))
     } else {
-      frameQueue.addOperation {
-        RenderFrameOperation(request, self.compositionManager).start()
+      if let _compositionManager = compositionManager {
+        frameQueue.addOperation {
+          RenderFrameOperation(request, _compositionManager).start()
+        }
       }
     }
   }

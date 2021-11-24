@@ -10,13 +10,17 @@ public class CompositionManager : NSObject {
   public private(set) var composition: AVComposition?
   public private(set) var videoComposition: AVVideoComposition?
   public private(set) var quietAudioTrackID: CMPersistentTrackID = kCMPersistentTrackID_Invalid
-  
+  public private(set) var baseUrl: URL
+  // need to make access to this thread safe
+  private var imageCache: [String:CGImage] = [:]
+
   private var videoTrackIdMap: [String:CMPersistentTrackID] = [:]
   private var frameMap: [String:CGImage] = [:]
 
-  public init(manifest: [String:Any], minDuration: CMTime = .invalid) {
+  public init(manifest: [String:Any], baseUrl: URL, minDuration: CMTime = .invalid) {
     self.manifest = manifest
-    self.assetLoader = AssetLoader()
+    self.assetLoader = AssetLoader(baseUrl)
+    self.baseUrl = baseUrl
     
     super.init()
     
@@ -28,6 +32,22 @@ public class CompositionManager : NSObject {
     } else {
       load(videos: videos, elements: elements, minDuration: minDuration)
     }
+  }
+  
+  internal func image(_ key: String, getter: () -> CGImage?) -> CGImage? {
+    var image = self.imageCache[key]
+    
+    if image == nil {
+      image = getter()
+      
+      self.imageCache[key] = image
+    }
+    
+    return image
+  }
+  
+  internal func addImageToCache(_ key: String, image: CGImage) {
+    imageCache[key] = image
   }
   
   func videoTrackId(elementName: String) -> CMPersistentTrackID? {
