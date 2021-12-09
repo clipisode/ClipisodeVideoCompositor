@@ -29,4 +29,24 @@ public class ColorHelper {
     
     return hexInt
   }
+
+  static func tweenColor(startColor: CGColor, endColor: CGColor, progress: CGFloat) -> CGColor {
+    // https://stackoverflow.com/a/22649247
+
+    if let colorSpace = startColor.colorSpace, startColor.colorSpace?.model == endColor.colorSpace?.model {
+      var components: [CGFloat] = []
+
+      for componentIndex in (0..<startColor.numberOfComponents) {
+        if let startComponent = startColor.components?[componentIndex], let endComponent = endColor.components?[componentIndex] {
+          components.append(startComponent + progress * (endComponent - startComponent))
+        }
+      }
+
+      if let tweenedColor = CGColor(colorSpace: colorSpace, components: []) {
+        return tweenedColor
+      }
+    }
+
+    return .clear
+  }
 }

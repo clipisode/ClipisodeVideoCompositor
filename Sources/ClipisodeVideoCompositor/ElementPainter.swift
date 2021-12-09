@@ -32,7 +32,7 @@ public class ElementPainter {
   }
   
   public func drawBackground() {
-    context.setFillColor(.init(red: 88.0/255.0, green: 5.0/255.0, blue: 147.0/255.0, alpha: 1.0))
+    context.setFillColor(.black)
 
     let bounds = CGRect(
       x: 0,
@@ -80,9 +80,9 @@ public class ElementPainter {
         if let sourceFrame = coreImageContext.createCGImage(sourceFrameImage, from: sourceFrameImage.extent) {
           let bounds = rectFromProps(props)
 
-          let props = DrawImageProps(resizeMode: .contain, bounds: bounds, alpha: alpha)
+          let drawImageProps = DrawImageProps(resizeMode: .contain, bounds: bounds, alpha: alpha)
           
-          draw(sourceFrame, with: props)
+          draw(sourceFrame, with: drawImageProps)
         }
       }
     }
@@ -116,7 +116,10 @@ public class ElementPainter {
       finalY = y - ((finalHeight - height) / 2)
     }
     
-    return CGRect(x: finalX, y: finalY, width: finalWidth, height: finalHeight)
+    return CGRect(
+      origin: CGPoint(x: x, y: y),
+      size: CGSize(width: width, height: height)
+    )
   }
   
   
@@ -138,7 +141,7 @@ public class ElementPainter {
       sourceHeight: Double(image.height),
       resizeMode: "contain",
       x: props.bounds.minX, y: props.bounds.minY, width: props.bounds.width, height: props.bounds.height
-    ).applying(coordinateTransform)
+    )
     
     context.saveGState()
 
@@ -154,9 +157,9 @@ public class ElementPainter {
       let alpha = props["alpha"] as? Double ?? 1.0
       let rect = rectFromProps(props)
       
-      let props = DrawImageProps(resizeMode: .contain, bounds: rect, alpha: alpha)
+      let drawImageProps = DrawImageProps(resizeMode: .contain, bounds: rect, alpha: alpha)
       
-      draw(frameImage, with: props)
+      draw(frameImage, with: drawImageProps)
     } else {
       print("No frame")
     }
@@ -299,8 +302,12 @@ public class ElementPainter {
     let myEndPoint: CGPoint = CGPoint(x: 0.0, y: 1280.0).applying(coordinateTransform)
 
     context.saveGState()
-    
-    context.clip(to: CGRect(x: 0, y: 1280 - height, width: 720, height: 1280).applying(coordinateTransform))
+    context.clip(to:
+      CGRect(
+        origin: CGPoint(x: 0, y: 1280 - height),
+        size: CGSize(width: 720, height: 1280)
+      ).applying(coordinateTransform)
+    )
     context.setAlpha(CGFloat(alpha))
     
     context.drawLinearGradient(gradient, start: myStartPoint, end: myEndPoint, options: .init(rawValue: 0))
@@ -425,8 +432,8 @@ public class ElementPainter {
     let width = props[widthKey] as? Double ?? 0
     let height = props[heightKey] as? Double ?? 0
 
-    let rect = CGRect(x: x, y: y, width: width, height: height)
+    let rect = CGRect(origin: CGPoint(x: x, y: y), size: CGSize(width: width, height: height)).applying(coordinateTransform)
     
-    return rect.applying(coordinateTransform)
+    return rect
   }
 }
