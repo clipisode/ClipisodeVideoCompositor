@@ -12,7 +12,7 @@ public struct CommandLineRender {
   
   public static func dataDir() -> URL? {
     if isCommandLineRun() {
-      let directoryPath = "/Users/max/Desktop/RenderTestFiles/TC1/" //argv[2];
+      let directoryPath = argv[2];
       var isDir: ObjCBool = false
         
       if (FileManager.default.fileExists(atPath: directoryPath, isDirectory: &isDir)) {
